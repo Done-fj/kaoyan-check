@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>考研打卡｜28考研 408+数二</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto}
+body{background:#0f172a;color:#e2e8f0;padding:14px;padding-bottom:80px}
+.tab-bar{position:fixed;bottom:0;left:0;right:0;background:#1e293b;display:flex;z-index:10}
+.tab{flex:1;text-align:center;padding:12px 0;color:#94a3b8;font-size:14px}
+.tab.active{color:#38bdf8;border-top:2px solid #38bdf8}
+.card{background:#1e293b;border-radius:12px;padding:14px;margin-bottom:12px}
+.card-title{font-size:16px;font-weight:600;margin-bottom:10px;color:#cbd5e1}
+.task-item{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid #334155;gap:10px}
+.task-item:last-child{border-bottom:none}
+.task-text{flex:1;font-size:14px}
+.task-done .task-text{text-decoration:line-through;color:#64748b}
+input[type=checkbox]{width:18px;height:18px;accent-color:#22c55e}
+.progress-wrap{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.circle{width:70px;height:70px;position:relative}
+.circle svg{width:70px;height:70px;transform:rotate(-90deg)}
+.circle-bg{fill:none;stroke:#334155;stroke-width:6}
+.circle-bar{fill:none;stroke:#22c55e;stroke-width:6;stroke-linecap:round}
+.circle-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold}
+.info-block{flex:1}
+.info-line{font-size:14px;margin:4px 0}
+.btn{background:#0284c7;color:#fff;border:none;border-radius:8px;padding:9px 12px;font-size:14px;margin:4px;cursor:pointer}
+.btn.secondary{background:#334155}
+.hidden{display:none}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
+.cal-day{aspect-ratio:1;background:#334155;border-radius:4px;font-size:12px;display:flex;align-items:center;justify-content:center}
+.cal-day.l1{background:#166534}
+.cal-day.l2{background:#15803d}
+.cal-day.l3{background:#22c55e}
+.set-row{margin:10px 0}
+.set-row label{display:block;font-size:14px;margin-bottom:4px}
+.set-row input{width:100%;padding:8px;border-radius:6px;border:none;background:#334155;color:#fff}
+</style>
+</head>
+<body>
+<div id="page-home">
+  <div class="progress-wrap">
+    <div class="circle">
+      <svg viewBox="0 0 100 100">
+        <circle class="circle-bg" cx="50" cy="50" r="44"></circle>
+        <circle id="bar" class="circle-bar" cx="50" cy="50" r="44" stroke-dasharray="276.46" stroke-dashoffset="276.46"></circle>
+      </svg>
+      <div class="circle-text" id="pct">0%</div>
+    </div>
+    <div class="info-block">
+      <div class="info-line">📅 距离初试：<span id="day-left">?</span>天</div>
+      <div class="info-line">🔥 连续打卡：<span id="streak">0</span>天</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📐 数学二（主线最高优先级）</div>
+    <div id="list-math"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">💻 408 计算机基础</div>
+    <div id="list-408"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📖 英语二</div>
+    <div id="list-eng"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🧩 额外补充（主线完成后再学）</div>
+    <div id="list-extra"></div>
+  </div>
+</div>
+
+<div id="page-stats" class="hidden">
+  <div class="card">
+    <div class="card-title">📊 本月打卡热力</div>
+    <div class="calendar" id="cal"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">💾 备份管理</div>
+    <button class="btn" onclick="exportData()">导出备份</button>
+    <button class="btn secondary" onclick="document.getElementById('import-input').click()">导入备份</button>
+    <input type="file" id="import-input" style="display:none" accept=".json" onchange="importData(this)">
+  </div>
+</div>
+
+<div id="page-setting" class="hidden">
+  <div class="card">
+    <div class="card-title">⚙️ 设置</div>
+    <div class="set-row">
+      <label>初试日期（格式 YYYY-MM-DD）</label>
+      <input id="exam-date" value="2027-12-25">
+    </div>
+    <div class="set-row">
+      <label>达标线（0~100 %）</label>
+      <input id="target-rate" value="60">
+    </div>
+    <button class="btn" onclick="saveSetting()">保存设置</button>
+  </div>
+  <div class="card">
+    <div class="card-title">⚠️ 提示</div>
+    <div style="font-size:14px;line-height:1.6">数据保存在浏览器本地，清缓存会丢失，建议每周导出一次备份。</div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" data-page="home">今日打卡</div>
+  <div class="tab" data-page="stats">统计&备份</div>
+  <div class="tab" data-page="setting">设置</div>
+</div>
+
+<script>
+// 默认任务清单
+const defaultTasks = {
+  math: [
+    {name:"高数：极限/连续 刷题复盘"},
+    {name:"一元微分：导数、中值定理"},
+    {name:"一元积分：计算+应用题"},
+    {name:"线代：行列式、矩阵运算"},
+    {name:"线代：方程组、特征值"}
+  ],
+  four08: [
+    {name:"数据结构：树、图、排序"},
+    {name:"计组：Cache、流水线、中断"},
+    {name:"操作系统：PV、内存置换"},
+    {name:"计算机网络：子网划分、TCP"}
+  ],
+  eng: [
+    {name:"背诵高频单词150个"},
+    {name:"长难句拆解 / 阅读精读"},
+    {name:"作文素材积累（10月后重点）"}
+  ],
+  extra: [
+    {name:"Linux / Python 基础（主线做完再学）"}
+  ]
+};
+let data = JSON.parse(localStorage.getItem("kaoyanData")) || {
+  records:{},
+  setting:{examDate:"2027-12-25",target:60}
+};
+// 页面切换
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    document.querySelectorAll("#page-home,#page-stats,#page-setting").forEach(p=>p.classList.add("hidden"));
+    document.getElementById("page-"+t.dataset.page).classList.remove("hidden");
+    if(t.dataset.page==="stats") renderCal();
+  }
+})
+// 渲染任务
+function render(){
+  const today = new Date().toISOString().slice(0,10);
+  if(!data.records[today]) data.records[today] = {};
+  const rec = data.records[today];
+  function renderList(containerId,arr,key){
+    const wrap = document.getElementById(containerId);
+    wrap.innerHTML = "";
+    arr.forEach((item,idx)=>{
+      const tid = key+"-"+idx;
+      const done = !!rec[tid];
+      const div = document.createElement("div");
+      div.className = "task-item " + (done?"task-done":"");
+      div.innerHTML = `<input type="checkbox" ${done?"checked":""}><div class="task-text">${item.name}</div>`;
+      div.querySelector("input").onchange=()=>{
+        rec[tid] = !rec[tid];
+        save();
+        render();
+      }
+      wrap.appendChild(div);
+    })
+  }
+  renderList("list-math",defaultTasks.math,"math");
+  renderList("list-408",defaultTasks.four08,"four08");
+  renderList("list-eng",defaultTasks.eng,"eng");
+  renderList("list-extra",defaultTasks.extra,"extra");
+  // 进度计算
+  const total = Object.values(defaultTasks).flat().length;
+  const finish = Object.values(rec).filter(x=>x).length;
+  const pct = total? Math.round(finish/total*100):0;
+  document.getElementById("pct").innerText = pct+"%";
+  const circle = document.getElementById("bar");
+  const len = 276.46;
+  circle.style.strokeDashoffset = len * (1 - pct/100);
+  // 倒计时
+  const exam = new Date(data.setting.examDate);
+  const now = new Date();
+  const diff = Math.ceil((exam - now)/(1000*60*60*24));
+  document.getElementById("day-left").innerText = diff>0?diff:"已到考试日";
+  // 连续天数
+  let streak = 0;
+  let d = new Date();
+  while(true){
+    const ds = d.toISOString().slice(0,10);
+    const r = data.records[ds];
+    if(!r || Object.values(r).filter(x=>x).length / total *100 < data.setting.target) break;
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  document.getElementById("streak").innerText = streak;
+}
+function renderCal(){
+  const cal = document.getElementById("cal");
+  cal.innerHTML = "";
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const first = new Date(y,m,1);
+  const last = new Date(y,m+1,0);
+  const pad = first.getDay();
+  for(let i=0;i<pad;i++){
+    const d = document.createElement("div");
+    d.className="cal-day";
+    cal.appendChild(d);
+  }
+  for(let d=1;d<=last.getDate();d++){
+    const ds = `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const rec = data.records[ds];
+    const all = Object.values(defaultTasks).flat().length;
+    const ok = rec? Object.values(rec).filter(x=>x).length:0;
+    const rate = all? ok/all*100:0;
+    let cls = "cal-day";
+    if(rate>=data.setting.target) cls+=" l3";
+    else if(rate>0) cls+=" l2";
+    else if(ok>0) cls+=" l1";
+    const el = document.createElement("div");
+    el.className=cls;
+    el.innerText=d;
+    cal.appendChild(el);
+  }
+}
+function save(){
+  localStorage.setItem("kaoyanData",JSON.stringify(data));
+}
+function saveSetting(){
+  data.setting.examDate = document.getElementById("exam-date").value;
+  data.setting.target = Number(document.getElementById("target-rate").value);
+  save();
+  render();
+  alert("设置保存成功");
+}
+function exportData(){
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="kaoyan-backup.json";
+  a.click();
+}
+function importData(input){
+  const f = input.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload=e=>{
+    try{
+      data = JSON.parse(e.target.result);
+      save();render();renderCal();
+      alert("导入成功！");
+    }catch(err){alert("文件损坏，导入失败")}
+  }
+  r.readAsText(f);
+}
+// 初始化设置框
+document.getElementById("exam-date").value = data.setting.examDate;
+document.getElementById("target-rate").value = data.setting.target;
+render();
+</script>
+</body>
+</html>
